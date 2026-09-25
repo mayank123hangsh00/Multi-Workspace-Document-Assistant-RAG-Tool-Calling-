@@ -10,14 +10,19 @@ export default function ChatPage() {
   const [lastQuery, setLastQuery] = useState<string>('');
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', height: '100vh', width: '100%' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', height: '100vh', width: '100%' }}>
       <ChatWindow
         onRetrievalDebugUpdate={(chunks, query) => {
           setRetrievedChunks(chunks);
           setLastQuery(query);
         }}
       />
-      <div style={{ borderLeft: '1px solid var(--bg-glass-border)', padding: '16px', height: '100vh', overflowY: 'auto' }}>
+      <div style={{
+        borderLeft: '1px solid var(--glass-border)',
+        height: '100vh',
+        overflowY: 'auto',
+        background: 'var(--bg-surface)',
+      }}>
         <RetrievalDebugView chunks={retrievedChunks} query={lastQuery} />
       </div>
     </div>

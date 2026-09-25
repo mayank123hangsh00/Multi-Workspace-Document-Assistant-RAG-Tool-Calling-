@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useWorkspace } from '../lib/context/WorkspaceContext';
 import { api } from '../lib/api';
 import { ChatMessage, RetrievedChunk } from '../lib/types';
-import { Send, Bot, User, Wrench, Shield, CheckCircle2, AlertCircle, FileText, Sparkles, CornerDownLeft } from 'lucide-react';
 
 interface ChatWindowProps {
   onRetrievalDebugUpdate?: (chunks: RetrievedChunk[], query: string) => void;
@@ -19,341 +18,276 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ onRetrievalDebugUpdate }
   const [retrievedChunks, setRetrievedChunks] = useState<RetrievedChunk[]>([]);
   const [activeToolCalls, setActiveToolCalls] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, sending]);
+  useEffect(() => { scrollToBottom(); }, [messages, sending]);
 
-  // Reset or load chat session on workspace change
   useEffect(() => {
     if (!activeWorkspace) return;
+    setMessages([]);
+    setSessionId(undefined);
     api.listChatSessions(activeWorkspace.id).then((sessions) => {
       if (sessions.length > 0) {
         const latest = sessions[0];
         setSessionId(latest.id);
         api.getSessionMessages(activeWorkspace.id, latest.id).then(setMessages);
-      } else {
-        setSessionId(undefined);
-        setMessages([]);
       }
     });
   }, [activeWorkspace?.id]);
 
-  const handleSend = async (e?: React.FormEvent) => {
+  const handleSend = async (e?: React.FormEvent, overrideText?: string) => {
     if (e) e.preventDefault();
-    if (!inputMessage.trim() || !activeWorkspace || sending) return;
+    const text = (overrideText || inputMessage).trim();
+    if (!text || !activeWorkspace || sending) return;
 
-    const userText = inputMessage.trim();
     setInputMessage('');
-
-    // Optimistic user message update
     const tempUserMsg: ChatMessage = {
       id: 'temp-' + Date.now(),
       session_id: sessionId || '',
       role: 'user',
-      content: userText,
+      content: text,
       citations: [],
       created_at: new Date().toISOString(),
     };
 
     setMessages((prev) => [...prev, tempUserMsg]);
     setSending(true);
+    setActiveToolCalls([]);
 
     try {
-      const res = await api.sendMessage(activeWorkspace.id, userText, sessionId);
+      const res = await api.sendMessage(activeWorkspace.id, text, sessionId);
       setSessionId(res.session_id);
       setMessages((prev) => [...prev, res.message]);
       setRetrievedChunks(res.retrieved_chunks || []);
       setActiveToolCalls(res.tool_calls || []);
-
       if (onRetrievalDebugUpdate) {
-        onRetrievalDebugUpdate(res.retrieved_chunks || [], userText);
+        onRetrievalDebugUpdate(res.retrieved_chunks || [], text);
       }
     } catch (err: any) {
       const errorMsg: ChatMessage = {
         id: 'err-' + Date.now(),
         session_id: sessionId || '',
         role: 'assistant',
-        content: `Sorry, an error occurred: ${err.message || 'Unknown error'}`,
+        content: `Error: ${err.message || 'Unknown error. Is the backend running?'}`,
         citations: [],
         created_at: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, errorMsg]);
     } finally {
       setSending(false);
+      inputRef.current?.focus();
     }
   };
 
-  // Sample prompt chips for quick testing
   const samplePrompts = [
-    "What are the key points in the uploaded documents?",
-    "Save a high priority task: Review workspace Q3 goals",
-    "Send a summary of the latest updates to Discord",
+    'What are the key points in the uploaded documents?',
+    'Save a high priority task: Review workspace Q3 goals',
+    'Send a summary of the latest updates to Discord',
   ];
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        width: '100%',
-        position: 'relative',
-      }}
-    >
-      {/* Workspace Indicator Header */}
-      <div
-        style={{
-          padding: '12px 20px',
-          borderBottom: '1px solid var(--bg-glass-border)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          background: 'rgba(15, 23, 42, 0.4)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Sparkles size={18} style={{ color: 'var(--primary)' }} />
-          <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>
-            RAG Assistant — {activeWorkspace ? activeWorkspace.name : 'No workspace'}
-          </span>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
+
+      {/* Header */}
+      <div className="chat-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{
+            width: '28px', height: '28px', borderRadius: '7px',
+            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 0 14px rgba(99,102,241,0.4)',
+          }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.88rem', fontWeight: 700, letterSpacing: '-0.01em' }}>
+              RAG Assistant
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', fontWeight: 500 }}>
+              {activeWorkspace ? activeWorkspace.name : 'Select a workspace to begin'}
+            </div>
+          </div>
         </div>
-        <div className="badge badge-primary" style={{ fontSize: '0.7rem' }}>
-          Enforced Workspace Isolation
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {activeWorkspace && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.7rem', color: 'var(--emerald-400)', fontWeight: 600 }}>
+              <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--emerald-400)', boxShadow: '0 0 6px rgba(52,211,153,0.7)' }} />
+              Isolated
+            </div>
+          )}
+          <div className="chip chip-brand" style={{ fontSize: '0.65rem' }}>Workspace Scoped</div>
         </div>
       </div>
 
-      {/* Messages Area */}
-      <div
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '20px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px',
-        }}
-      >
+      {/* Messages */}
+      <div className="chat-messages">
         {messages.length === 0 && (
-          <div
-            style={{
-              margin: 'auto',
-              maxWidth: '480px',
-              textAlign: 'center',
-              padding: '30px 20px',
-            }}
-          >
-            <Bot size={48} style={{ margin: '0 auto 16px', color: 'var(--primary)', opacity: 0.8 }} />
-            <h3 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>
-              Ask anything about documents in {activeWorkspace?.name || 'this workspace'}
-            </h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: '24px', lineHeight: 1.5 }}>
-              The assistant will answer using only this workspace's uploaded documents with precise source citations.
-              It can also run tools like saving tasks or posting to Discord.
+          <div style={{ margin: 'auto', maxWidth: '460px', textAlign: 'center', padding: '20px 0' }} className="animate-fade-up">
+            {/* Icon */}
+            <div style={{
+              width: '56px', height: '56px', borderRadius: '16px',
+              background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1))',
+              border: '1px solid rgba(99,102,241,0.2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 20px',
+            }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--indigo-400)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+            </div>
+            <div style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '8px', letterSpacing: '-0.01em' }}>
+              Ask anything about <span className="text-gradient">{activeWorkspace?.name || 'this workspace'}</span>
+            </div>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-tertiary)', lineHeight: 1.6, marginBottom: '24px' }}>
+              Answers are strictly grounded in this workspace's documents with inline source citations.
             </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-subtle)', textTransform: 'uppercase', textAlign: 'left' }}>
-                Try asking:
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'left' }}>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-disabled)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px' }}>
+                Try asking
               </div>
               {samplePrompts.map((prompt, idx) => (
                 <button
                   key={idx}
-                  onClick={() => setInputMessage(prompt)}
-                  className="glass-card"
-                  style={{
-                    padding: '10px 14px',
-                    textAlign: 'left',
-                    color: 'var(--text-main)',
-                    fontSize: '0.85rem',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                  }}
+                  onClick={() => handleSend(undefined, prompt)}
+                  className="prompt-chip"
+                  disabled={!activeWorkspace || sending}
                 >
                   <span>{prompt}</span>
-                  <CornerDownLeft size={14} style={{ color: 'var(--text-subtle)' }} />
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color: 'var(--text-disabled)' }}>
+                    <polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/>
+                  </svg>
                 </button>
               ))}
             </div>
           </div>
         )}
 
-        {messages.map((msg) => {
+        {messages.map((msg, i) => {
           const isUser = msg.role === 'user';
           return (
             <div
               key={msg.id}
-              style={{
-                display: 'flex',
-                gap: '12px',
-                alignSelf: isUser ? 'flex-end' : 'flex-start',
-                maxWidth: isUser ? '80%' : '85%',
-              }}
+              style={{ animationDelay: `${i * 30}ms` }}
+              className={`animate-fade-up ${isUser ? 'message-user' : 'message-assistant'}`}
             >
               {!isUser && (
-                <div
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '8px',
-                    background: 'var(--gradient-primary)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    flexShrink: 0,
-                  }}
-                >
-                  <Bot size={18} />
+                <div className="message-avatar avatar-bot">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+                  </svg>
                 </div>
               )}
+              <div>
+                <div className={isUser ? 'message-bubble-user' : 'message-bubble-assistant'}>
+                  <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
 
-              <div
-                style={{
-                  background: isUser ? 'var(--gradient-accent)' : 'rgba(15, 23, 42, 0.75)',
-                  border: isUser ? 'none' : '1px solid var(--bg-glass-border)',
-                  borderRadius: '14px',
-                  padding: '12px 16px',
-                  color: isUser ? '#ffffff' : 'var(--text-main)',
-                  fontSize: '0.92rem',
-                  lineHeight: 1.6,
-                  whiteSpace: 'pre-wrap',
-                  boxShadow: isUser ? 'var(--shadow-glow)' : 'none',
-                }}
-              >
-                {msg.content}
-
-                {/* Citations section */}
-                {msg.citations && msg.citations.length > 0 && (
-                  <div
-                    style={{
-                      marginTop: '12px',
-                      paddingTop: '10px',
-                      borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-                      fontSize: '0.8rem',
-                    }}
-                  >
-                    <div style={{ fontWeight: 600, color: 'var(--accent-cyan)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <FileText size={14} /> Citations:
+                  {/* Citations */}
+                  {!isUser && msg.citations && msg.citations.length > 0 && (
+                    <div className="citation-block">
+                      <div className="citation-label">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                        Sources · {msg.citations.length}
+                      </div>
+                      {msg.citations.map((cite, idx) => (
+                        <div key={idx} className="citation-item">
+                          <div className="citation-filename">
+                            {cite.filename} · Chunk #{(cite.chunk_index ?? 0) + 1}
+                            {cite.similarity && (
+                              <span style={{ marginLeft: '8px', fontSize: '0.68rem', color: 'var(--text-tertiary)', fontWeight: 400 }}>
+                                {(cite.similarity * 100).toFixed(0)}% match
+                              </span>
+                            )}
+                          </div>
+                          {cite.snippet && <div className="citation-snippet">{cite.snippet}</div>}
+                        </div>
+                      ))}
                     </div>
-                    {msg.citations.map((cite, idx) => (
-                      <div
-                        key={idx}
-                        style={{
-                          background: 'rgba(0, 0, 0, 0.2)',
-                          borderRadius: '6px',
-                          padding: '6px 10px',
-                          marginBottom: '4px',
-                        }}
-                      >
-                        <span style={{ fontWeight: 600, color: '#a5b4fc' }}>
-                          [{cite.filename}, Chunk #{cite.chunk_index + 1}]
-                        </span>{' '}
-                        <span style={{ color: 'var(--text-muted)' }}>- {cite.snippet}</span>
+                  )}
+                </div>
+
+                {/* Tool calls badge */}
+                {!isUser && activeToolCalls.length > 0 && i === messages.length - 1 && (
+                  <div className="tool-banner" style={{ marginTop: '8px' }}>
+                    <div className="tool-banner-label">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                      </svg>
+                      Tools Executed
+                    </div>
+                    {activeToolCalls.map((tc, idx) => (
+                      <div key={idx} style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                        <span style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--emerald-400)' }}>{tc.tool_name}</span>
+                        <span style={{ color: 'var(--text-tertiary)' }}> · {tc.result?.status || 'executed'}</span>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-
               {isUser && (
-                <div
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '8px',
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    flexShrink: 0,
-                  }}
-                >
-                  <User size={18} />
+                <div className="message-avatar avatar-user">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                  </svg>
                 </div>
               )}
             </div>
           );
         })}
 
-        {/* Tool Call Activity Banner */}
-        {activeToolCalls.length > 0 && (
-          <div className="glass-card" style={{ padding: '10px 14px', background: 'rgba(16, 185, 129, 0.08)', borderColor: 'rgba(16, 185, 129, 0.3)' }}>
-            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Wrench size={14} /> Tools executed in response:
-            </div>
-            {activeToolCalls.map((tc, idx) => (
-              <div key={idx} style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{tc.tool_name}</span>: {JSON.stringify(tc.arguments)}
-              </div>
-            ))}
-          </div>
-        )}
-
+        {/* Thinking indicator */}
         {sending && (
-          <div style={{ display: 'flex', gap: '12px', alignSelf: 'flex-start' }}>
-            <div
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                background: 'var(--gradient-primary)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white',
-              }}
-            >
-              <Bot size={18} />
+          <div className="message-assistant animate-fade-in">
+            <div className="message-avatar avatar-bot">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+              </svg>
             </div>
-            <div className="glass-card" style={{ padding: '12px 16px', fontSize: '0.88rem', color: 'var(--text-muted)' }}>
-              Searching workspace documents & reasoning...
+            <div className="message-bubble-assistant" style={{ padding: '14px 16px' }}>
+              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                <div className="typing-dot" />
+                <div className="typing-dot" />
+                <div className="typing-dot" />
+              </div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-disabled)', marginTop: '6px', fontWeight: 500 }}>
+                Searching documents &amp; reasoning...
+              </div>
             </div>
           </div>
         )}
-
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input bar */}
-      <form
-        onSubmit={handleSend}
-        style={{
-          padding: '16px',
-          borderTop: '1px solid var(--bg-glass-border)',
-          background: 'rgba(15, 23, 42, 0.6)',
-          display: 'flex',
-          gap: '10px',
-        }}
-      >
-        <input
-          type="text"
-          className="glass-input"
-          placeholder={
-            activeWorkspace
-              ? `Ask about documents in "${activeWorkspace.name}"...`
-              : 'Select a workspace first...'
-          }
-          value={inputMessage}
-          onChange={(e) => setInputMessage(e.target.value)}
-          disabled={!activeWorkspace || sending}
-          style={{ flex: 1 }}
-        />
-        <button
-          type="submit"
-          className="gradient-button"
-          disabled={!activeWorkspace || sending || !inputMessage.trim()}
-        >
-          <Send size={18} />
-        </button>
-      </form>
+      <div className="chat-input-bar">
+        <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px', flex: 1, alignItems: 'center' }}>
+          <input
+            ref={inputRef}
+            type="text"
+            className="chat-input"
+            placeholder={activeWorkspace ? `Ask about "${activeWorkspace.name}" documents...` : 'Select a workspace to start chatting...'}
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
+            disabled={!activeWorkspace || sending}
+          />
+          <button
+            type="submit"
+            className="chat-send-btn"
+            disabled={!activeWorkspace || sending || !inputMessage.trim()}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </form>
+      </div>
     </div>
   );
 };

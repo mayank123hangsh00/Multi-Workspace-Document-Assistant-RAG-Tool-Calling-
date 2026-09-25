@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { useWorkspace } from '../lib/context/WorkspaceContext';
-import { ChevronDown, Plus, FolderCheck, Check, Trash2 } from 'lucide-react';
 
 export const WorkspaceSwitcher: React.FC = () => {
   const { workspaces, activeWorkspace, setActiveWorkspace, createWorkspace, deleteWorkspace } = useWorkspace();
@@ -31,214 +30,228 @@ export const WorkspaceSwitcher: React.FC = () => {
 
   const handleDelete = async (e: React.MouseEvent, id: string, name: string) => {
     e.stopPropagation();
-    if (confirm(`Are you sure you want to delete workspace "${name}" and all its documents?`)) {
-      try {
-        await deleteWorkspace(id);
-      } catch (err: any) {
-        alert(err.message || 'Failed to delete workspace');
-      }
+    if (confirm(`Delete workspace "${name}" and all its documents?`)) {
+      try { await deleteWorkspace(id); }
+      catch (err: any) { alert(err.message || 'Failed to delete workspace'); }
     }
   };
 
+  const wsInitial = (name: string) => name.charAt(0).toUpperCase();
+
   return (
     <div style={{ position: 'relative', width: '100%' }}>
+      {/* Trigger button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '10px 14px',
-          background: 'rgba(255, 255, 255, 0.05)',
-          border: '1px solid rgba(255, 255, 255, 0.12)',
-          borderRadius: '12px',
-          color: 'var(--text-main)',
-          cursor: 'pointer',
-          transition: 'all 0.2s ease',
-        }}
+        className="workspace-btn"
+        style={{ width: '100%' }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-          <div
-            style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '8px',
-              background: 'var(--gradient-primary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontWeight: 700,
-              fontSize: '0.85rem',
-              flexShrink: 0,
-            }}
-          >
-            {activeWorkspace ? activeWorkspace.name.charAt(0).toUpperCase() : '?'}
+        <div className="workspace-avatar">
+          {activeWorkspace ? wsInitial(activeWorkspace.name) : '?'}
+        </div>
+        <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+          <div style={{ fontSize: '0.82rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-primary)' }}>
+            {activeWorkspace ? activeWorkspace.name : 'Select Workspace'}
           </div>
-          <div style={{ textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            <div style={{ fontSize: '0.9rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {activeWorkspace ? activeWorkspace.name : 'Select Workspace'}
-            </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              {activeWorkspace ? `${activeWorkspace.doc_count ?? 0} docs` : 'No workspace'}
-            </div>
+          <div style={{ fontSize: '0.68rem', color: 'var(--text-tertiary)', fontWeight: 500 }}>
+            {activeWorkspace ? `${activeWorkspace.doc_count ?? 0} documents` : 'No workspace selected'}
           </div>
         </div>
-        <ChevronDown size={18} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+        <svg
+          width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-disabled)"
+          strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+          style={{ flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}
+        >
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
       </button>
 
+      {/* Dropdown */}
       {isOpen && (
-        <div
-          className="glass-panel"
-          style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            right: 0,
-            marginTop: '8px',
-            zIndex: 100,
-            padding: '8px',
-            maxHeight: '280px',
-            overflowY: 'auto',
-          }}
-        >
-          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-subtle)', padding: '6px 8px', textTransform: 'uppercase' }}>
-            Workspaces
-          </div>
-          {workspaces.map((ws) => {
-            const isSelected = activeWorkspace?.id === ws.id;
-            return (
-              <div
-                key={ws.id}
-                onClick={() => {
-                  setActiveWorkspace(ws);
-                  setIsOpen(false);
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '8px 10px',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  background: isSelected ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
-                  color: isSelected ? '#a5b4fc' : 'var(--text-main)',
-                  transition: 'all 0.15s ease',
-                  marginBottom: '2px',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                  <FolderCheck size={16} />
-                  <span style={{ fontSize: '0.88rem', fontWeight: 500, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                    {ws.name}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  {isSelected && <Check size={16} style={{ color: 'var(--primary)' }} />}
-                  {workspaces.length > 1 && (
-                    <button
-                      onClick={(e) => handleDelete(e, ws.id, ws.name)}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--text-subtle)',
-                        cursor: 'pointer',
-                        padding: '2px',
-                        display: 'flex',
-                        alignItems: 'center',
-                      }}
-                      title="Delete workspace"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-
-          <button
-            onClick={() => setShowModal(true)}
+        <>
+          {/* Click away overlay */}
+          <div style={{ position: 'fixed', inset: 0, zIndex: 50 }} onClick={() => setIsOpen(false)} />
+          <div
             style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 10px',
-              marginTop: '6px',
-              borderTop: '1px solid var(--bg-glass-border)',
-              background: 'transparent',
-              borderLeft: 'none',
-              borderRight: 'none',
-              borderBottom: 'none',
-              color: 'var(--primary)',
-              cursor: 'pointer',
-              fontSize: '0.88rem',
-              fontWeight: 600,
+              position: 'absolute', top: 'calc(100% + 6px)', left: '8px', right: '8px',
+              background: 'var(--bg-overlay)', border: '1px solid var(--glass-border-md)',
+              borderRadius: '12px', zIndex: 100, overflow: 'hidden',
+              boxShadow: 'var(--shadow-xl)',
             }}
+            className="animate-fade-up"
           >
-            <Plus size={16} /> Create Workspace
-          </button>
-        </div>
+            {/* Header */}
+            <div style={{
+              padding: '8px 12px', fontSize: '0.65rem', fontWeight: 700,
+              letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-disabled)',
+              borderBottom: '1px solid var(--glass-border)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}>
+              <span>Workspaces</span>
+              <span style={{ color: 'var(--text-disabled)', fontWeight: 500 }}>{workspaces.length}</span>
+            </div>
+
+            {/* Workspace list */}
+            <div style={{ padding: '6px', maxHeight: '220px', overflowY: 'auto' }}>
+              {workspaces.length === 0 && (
+                <div style={{ padding: '16px 12px', textAlign: 'center', fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>
+                  No workspaces yet
+                </div>
+              )}
+              {workspaces.map((ws) => {
+                const isSelected = activeWorkspace?.id === ws.id;
+                return (
+                  <div
+                    key={ws.id}
+                    onClick={() => { setActiveWorkspace(ws); setIsOpen(false); }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '10px',
+                      padding: '8px 10px', borderRadius: '8px', cursor: 'pointer',
+                      background: isSelected ? 'rgba(99,102,241,0.1)' : 'transparent',
+                      border: `1px solid ${isSelected ? 'rgba(99,102,241,0.2)' : 'transparent'}`,
+                      marginBottom: '2px', transition: 'background 0.15s, border-color 0.15s',
+                    }}
+                  >
+                    <div style={{
+                      width: '24px', height: '24px', borderRadius: '6px', flexShrink: 0,
+                      background: isSelected ? 'var(--brand-gradient)' : 'var(--bg-hover)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '0.72rem', fontWeight: 700,
+                      color: isSelected ? 'white' : 'var(--text-tertiary)',
+                    }}>
+                      {wsInitial(ws.name)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '0.82rem', fontWeight: isSelected ? 600 : 500, color: isSelected ? 'var(--indigo-400)' : 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {ws.name}
+                      </div>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--text-disabled)' }}>
+                        {ws.doc_count ?? 0} docs
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                      {isSelected && (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--indigo-400)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                      )}
+                      {workspaces.length > 1 && (
+                        <button
+                          onClick={(e) => handleDelete(e, ws.id, ws.name)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '3px', color: 'var(--text-disabled)', borderRadius: '4px', display: 'flex', alignItems: 'center' }}
+                          title="Delete workspace"
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Create new */}
+            <div style={{ borderTop: '1px solid var(--glass-border)', padding: '6px' }}>
+              <button
+                onClick={() => { setShowModal(true); setIsOpen(false); }}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
+                  padding: '9px 10px', background: 'none', border: '1px dashed var(--glass-border-md)',
+                  borderRadius: '8px', cursor: 'pointer', color: 'var(--indigo-400)',
+                  fontSize: '0.82rem', fontWeight: 600, transition: 'background 0.15s, border-color 0.15s',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(99,102,241,0.05)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                New Workspace
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
-      {/* Modal for creating workspace */}
+      {/* Create Workspace Modal */}
       {showModal && (
         <div
           style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0, 0, 0, 0.7)',
-            backdropFilter: 'blur(6px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '20px',
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px',
           }}
           onClick={() => setShowModal(false)}
         >
           <div
-            className="glass-panel"
-            style={{ width: '100%', maxWidth: '420px', padding: '24px' }}
+            className="animate-fade-up"
+            style={{
+              width: '100%', maxWidth: '420px',
+              background: 'var(--bg-elevated)', border: '1px solid var(--glass-border-md)',
+              borderRadius: '16px', padding: '28px', boxShadow: 'var(--shadow-xl)',
+            }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 style={{ fontSize: '1.25rem', marginBottom: '8px' }}>Create New Workspace</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: '20px' }}>
-              Documents and chat history in this workspace will be isolated from others.
-            </p>
+            {/* Modal header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+              <div style={{
+                width: '38px', height: '38px', borderRadius: '10px', background: 'var(--brand-gradient)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: 'var(--glow-brand)',
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontSize: '1.05rem', fontWeight: 700, letterSpacing: '-0.02em' }}>New Workspace</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', marginTop: '1px' }}>
+                  Documents and chats will be isolated here
+                </div>
+              </div>
+            </div>
 
             {error && (
-              <div className="badge badge-danger" style={{ width: '100%', marginBottom: '14px', padding: '8px' }}>
+              <div style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', fontSize: '0.82rem', color: 'var(--rose-400)' }}>
                 {error}
               </div>
             )}
 
             <form onSubmit={handleCreate}>
+              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                Workspace Name
+              </label>
               <input
                 type="text"
-                className="glass-input"
-                placeholder="Workspace name (e.g. Project Phoenix)"
+                className="input"
+                placeholder="e.g. Project Phoenix, Q4 Planning..."
                 value={newWorkspaceName}
                 onChange={(e) => setNewWorkspaceName(e.target.value)}
-                style={{ width: '100%', marginBottom: '20px' }}
+                style={{ marginBottom: '20px', borderRadius: '10px' }}
                 autoFocus
               />
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
-                  className="secondary-button"
+                  className="btn btn-secondary"
                   onClick={() => setShowModal(false)}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="gradient-button"
+                  className="btn btn-primary"
                   disabled={creating || !newWorkspaceName.trim()}
                 >
-                  {creating ? 'Creating...' : 'Create'}
+                  {creating ? (
+                    <div className="spin" style={{ width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%' }} />
+                  ) : (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                  )}
+                  {creating ? 'Creating...' : 'Create Workspace'}
                 </button>
               </div>
             </form>
