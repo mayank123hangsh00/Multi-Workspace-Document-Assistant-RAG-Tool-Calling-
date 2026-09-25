@@ -13,6 +13,7 @@ export interface Document {
   file_hash: string;
   file_size_bytes?: number;
   mime_type?: string;
+  chunk_count?: number;
   uploaded_by?: string;
   uploaded_at: string;
   status: 'processing' | 'ready' | 'error';
