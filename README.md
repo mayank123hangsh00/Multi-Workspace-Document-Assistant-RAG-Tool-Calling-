@@ -26,9 +26,20 @@
   <a href="#">
     <img src="https://img.shields.io/badge/Gemini-Embeddings-4285F4?style=flat-square&logo=google" alt="Gemini">
   </a>
+  <a href="https://multi-workspace-document-assistant-three.vercel.app">
+    <img src="https://img.shields.io/badge/Vercel-Live_App-000000?style=flat-square&logo=vercel" alt="Vercel App">
+  </a>
+  <a href="https://abstrat-backend.onrender.com/api/health">
+    <img src="https://img.shields.io/badge/Render-Live_API-46E3B7?style=flat-square&logo=render" alt="Render API">
+  </a>
   <a href="#">
     <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="MIT License">
   </a>
+</p>
+
+<p>
+  🚀 <strong>Live Web App:</strong> <a href="https://multi-workspace-document-assistant-three.vercel.app">https://multi-workspace-document-assistant-three.vercel.app</a><br/>
+  ⚡ <strong>Live API Server:</strong> <a href="https://abstrat-backend.onrender.com">https://abstrat-backend.onrender.com</a>
 </p>
 
 <p>
