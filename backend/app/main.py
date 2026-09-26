@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.db.client import db
 from app.db.queries import MIGRATION_SQL
-from app.routers import workspaces, documents, chat, dashboard
+from app.routers import workspaces, documents, chat, dashboard, auth
 from app.services.tools.registry import tool_registry, ToolDefinition
 from app.services.tools.save_task import SAVE_TASK_DEFINITION
 from app.services.tools.send_discord import SEND_DISCORD_DEFINITION
@@ -88,6 +88,7 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(auth.router)
 app.include_router(workspaces.router)
 app.include_router(documents.router)
 app.include_router(chat.router)

@@ -25,20 +25,30 @@ export default function LandingPage() {
       setLoading(true);
       setError('');
       if (isSignUp) {
-        const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({ email, password });
-        if (signUpErr) {
-          // If account exists or email confirmation is rate-limited, attempt sign in directly
-          const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
-          if (!signInErr) {
-            router.push('/chat');
-            return;
-          }
-          throw signUpErr;
+        const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        try {
+          await fetch(`${backendUrl}/api/auth/signup`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+          });
+        } catch (e) {
+          console.warn('Backend signup helper note:', e);
         }
+
+        // Sign in immediately (account created & auto-confirmed via admin endpoint)
+        const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+        if (!signInErr) {
+          router.push('/chat');
+          return;
+        }
+
+        // Fallback if needed
+        const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({ email, password });
+        if (signUpErr) throw signUpErr;
         if (signUpData.session) {
           router.push('/chat');
         } else {
-          // Try signing in immediately
           const { error: autoSignInErr } = await supabase.auth.signInWithPassword({ email, password });
           if (!autoSignInErr) {
             router.push('/chat');
