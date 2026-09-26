@@ -3,8 +3,8 @@ Authentication helper router for instant admin user creation bypassing SMTP rate
 """
 import httpx
 import logging
-from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, EmailStr
+from fastapi import APIRouter, status
+from pydantic import BaseModel
 
 from app.config import get_settings
 
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 class SignUpRequest(BaseModel):
-    email: EmailStr
+    email: str
     password: str
 
 
