@@ -25,10 +25,28 @@ export default function LandingPage() {
       setLoading(true);
       setError('');
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
-        alert('Account created! You can now sign in.');
-        setIsSignUp(false);
+        const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({ email, password });
+        if (signUpErr) {
+          // If account exists or email confirmation is rate-limited, attempt sign in directly
+          const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+          if (!signInErr) {
+            router.push('/chat');
+            return;
+          }
+          throw signUpErr;
+        }
+        if (signUpData.session) {
+          router.push('/chat');
+        } else {
+          // Try signing in immediately
+          const { error: autoSignInErr } = await supabase.auth.signInWithPassword({ email, password });
+          if (!autoSignInErr) {
+            router.push('/chat');
+            return;
+          }
+          alert('Account created! Click "Already have an account? Sign In" to log in.');
+          setIsSignUp(false);
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
